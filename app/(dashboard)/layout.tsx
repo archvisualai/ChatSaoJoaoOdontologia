@@ -2,6 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import NavLinks from "@/components/NavLinks";
 import LogoutButton from "@/components/LogoutButton";
+import AlertaSolicitacoes from "@/components/AlertaSolicitacoes";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -20,6 +21,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <AlertaSolicitacoes />
       {/* Sidebar — desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-slate-200 bg-white md:flex">
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
