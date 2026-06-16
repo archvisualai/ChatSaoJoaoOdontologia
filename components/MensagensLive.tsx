@@ -27,27 +27,43 @@ export default function MensagensLive({
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`mensagens:${telefone}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "mensagens",
-          filter: `telefone=eq.${telefone}`,
-        },
-        (payload) => {
-          const nova = payload.new as Mensagem;
-          setMensagens((prev) =>
-            prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]
-          );
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      // O Realtime precisa do token do usuário para passar pelo RLS
+      // (acesso anônimo foi revogado na tabela mensagens).
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (session) {
+        await supabase.realtime.setAuth(session.access_token);
+      }
+
+      channel = supabase
+        .channel(`mensagens:${telefone}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "mensagens",
+            filter: `telefone=eq.${telefone}`,
+          },
+          (payload) => {
+            const nova = payload.new as Mensagem;
+            setMensagens((prev) =>
+              prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]
+            );
+          }
+        )
+        .subscribe();
+    })();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [telefone]);
 
