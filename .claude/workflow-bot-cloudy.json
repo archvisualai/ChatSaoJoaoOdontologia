@@ -1,0 +1,5185 @@
+{
+  "name": "Bot Menu - Cloudy - Sao Joao Odontologia",
+  "nodes": [
+    {
+      "id": "n1-qu6gzf",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3200,
+        -2800
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bot-saojoao-cloudy",
+        "options": {}
+      },
+      "webhookId": "b1a1c2d3-e4f5-46a7-88b9-c0d1e2f3a4b5"
+    },
+    {
+      "id": "n2-axfwcf",
+      "name": "Coleta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2940,
+        -2800
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst data = body.data || body;\nconst nome = data.pushName || data.senderName || 'Paciente';\nconst telefone = data.key && data.key.remoteJid ? data.key.remoteJid : (data.remoteJid || '');\nconst mensagem = (data.message && data.message.conversation ? data.message.conversation :\n  (data.message && data.message.extendedTextMessage ? data.message.extendedTextMessage.text :\n  (data.text || ''))).trim();\nconst fromMe = data.key && data.key.fromMe ? true : false;\nreturn [{ json: { nome, telefone, mensagem, fromMe } }];"
+      }
+    },
+    {
+      "id": "n3-kzew38",
+      "name": "Normaliza",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2680,
+        -2800
+      ],
+      "parameters": {
+        "jsCode": "const nome = $json.nome || '';\nconst telefone = $json.telefone || '';\nconst mensagem = $json.mensagem || '';\nconst fromMe = $json.fromMe || false;\n\nconst msgNorm = mensagem.toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s#]/g, '').trim();\n\nconst isPausar = fromMe && msgNorm.includes('pausar');\nconst isRetomar = fromMe && msgNorm.includes('retomar');\n\nreturn [{ json: { nome, telefone, mensagem, msgNorm, fromMe, isPausar, isRetomar, isComando: isPausar || isRetomar } }];"
+      }
+    },
+    {
+      "id": "n4-kzr35y",
+      "name": "E comando?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2420,
+        -2800
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isComando }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "n5-b0zecc"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n6-79ceso",
+      "name": "E pausar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2160,
+        -2980
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.isPausar }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "n7-z0vsz0"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n8-z0ev0q",
+      "name": "Pausa bot",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1900,
+        -3080
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "bot_pausado",
+          "mode": "list",
+          "cachedResultName": "bot_pausado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $json.telefone }}",
+            "pausado_em": "={{ $now }}",
+            "pausado_por": "secretaria"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pausado_em",
+              "displayName": "pausado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "pausado_por",
+              "displayName": "pausado_por",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n9-eu4ife",
+      "name": "Retoma bot",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1900,
+        -2880
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=DELETE FROM public.bot_pausado WHERE telefone = '{{ $json.telefone }}'",
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n10-3z9c47",
+      "name": "Log recebida",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2160,
+        -2740
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $json.telefone }}",
+            "direcao": "recebida",
+            "conteudo": "={{ $json.mensagem }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "n11-ili985",
+      "name": "Verifica pausa",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1900,
+        -2740
+      ],
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "bot_pausado",
+          "mode": "list",
+          "cachedResultName": "bot_pausado"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "telefone",
+              "value": "={{ $('Coleta').item.json.telefone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "n12-8qtvix",
+      "name": "Restaura dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1640,
+        -2740
+      ],
+      "parameters": {
+        "jsCode": "const pausaRow = $input.first().json;\nconst nome = $('Coleta').item.json.nome || '';\nconst telefone = $('Coleta').item.json.telefone || '';\nconst mensagem = $('Coleta').item.json.mensagem || '';\nconst msgNorm = $('Normaliza').item.json.msgNorm || '';\n\nconst estaPausado = !!(pausaRow && pausaRow.telefone);\n\nreturn [{ json: { nome, telefone, mensagem, msgNorm, estaPausado } }];"
+      }
+    },
+    {
+      "id": "n13-nyfgum",
+      "name": "Bot pausado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1380,
+        -2740
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.estaPausado }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "n14-h4f1md"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n15-4r6hlw",
+      "name": "Upsert paciente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1120,
+        -2740
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "pacientes",
+          "mode": "list",
+          "cachedResultName": "pacientes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $json.telefone }}",
+            "nome": "={{ $json.nome }}",
+            "ultima_interacao": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "ultima_interacao",
+              "displayName": "ultima_interacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n16-p8fpvd",
+      "name": "Busca estado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -860,
+        -2740
+      ],
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "limit": 1,
+        "where": {
+          "values": [
+            {
+              "column": "telefone",
+              "value": "={{ $('Coleta').item.json.telefone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "alwaysOutputData": true,
+      "continueOnFail": true
+    },
+    {
+      "id": "n17-cbfnqh",
+      "name": "Monta contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -600,
+        -2740
+      ],
+      "parameters": {
+        "jsCode": "const nome = $('Coleta').item.json.nome || '';\nconst telefone = $('Coleta').item.json.telefone || '';\nconst mensagem = $('Coleta').item.json.mensagem || '';\nconst msgNorm = $('Normaliza').item.json.msgNorm || '';\n\nlet estado = 'menu';\nlet contexto = {};\n\ntry {\n  const rows = $('Busca estado').all();\n  if (rows && rows.length > 0) {\n    const row = rows[0].json;\n    if (row && row.telefone) {\n      estado = row.estado || 'menu';\n      contexto = row.contexto || {};\n      if (typeof contexto === 'string') {\n        try { contexto = JSON.parse(contexto); } catch(e) { contexto = {}; }\n      }\n    }\n  }\n} catch(e) {\n  estado = 'menu';\n  contexto = {};\n}\n\nreturn [{ json: { nome, telefone, mensagem, msgNorm, estado, contexto } }];"
+      }
+    },
+    {
+      "id": "n18-3tmbd2",
+      "name": "Roteador",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -340,
+        -2740
+      ],
+      "parameters": {
+        "jsCode": "const msg = $json.msgNorm || '';\nconst msgRaw = ($('Coleta').item.json.mensagem || '').trim();\nconst estado = $json.estado || 'menu';\nlet contexto = Object.assign({}, $json.contexto || {});\n\n// 'menu' a qualquer momento volta pro menu inicial\nif (msg === 'menu') {\n  return [{ json: { ...$json, contexto, rota: 'menu' } }];\n}\n\nfunction out(rota, extra) {\n  return [{ json: { ...$json, contexto: Object.assign({}, contexto, extra || {}), rota } }];\n}\n\nif (estado === 'menu') {\n  const mapa = { '1':'agendar_proc', '2':'reagendar', '3':'procedimentos', '4':'valores', '5':'localizacao', '6':'urgencia', '7':'secretaria' };\n  return out(mapa[msg] || 'invalido');\n}\n\nif (estado === 'agendar_proc') {\n  if (!msgRaw) return out('invalido');\n  return out('agendar_dia', { procedimento: msgRaw });\n}\n\nif (estado === 'agendar_dia') {\n  if (!msgRaw) return out('invalido');\n  return out('agendar_periodo', { dia: msgRaw });\n}\n\nif (estado === 'agendar_periodo') {\n  if (!msgRaw) return out('invalido');\n  return out('agendar_confirma', { periodo: msgRaw });\n}\n\nif (estado === 'agendar_confirma') {\n  if (msg === '1') return out('agendar_ok');\n  if (msg === '2') return out('agendar_proc');\n  return out('invalido');\n}\n\nif (estado === 'procedimentos') {\n  if (msg === '1') return out('proc_odonto');\n  if (msg === '2') return out('proc_estetica');\n  if (msg === '0') return out('menu');\n  return out('invalido');\n}\n\nif (estado === 'proc_odonto' || estado === 'proc_estetica') {\n  if (msg === '0') return out('menu');\n  return out(estado); // redisplay same listing\n}\n\nif (estado === 'valores') {\n  if (msg === '1') return out('agendar_proc');\n  if (msg === '0') return out('menu');\n  return out('invalido');\n}\n\nif (estado === 'localizacao' || estado === 'urgencia') {\n  if (msg === '0') return out('menu');\n  return out(estado); // redisplay\n}\n\nif (estado === 'reagendar') {\n  if (!msgRaw) return out('invalido');\n  const cancelKeywords = ['cancel'];\n  const isCancel = cancelKeywords.some(k => msg.includes(k));\n  return out('reagendar_ok', { pedido: msgRaw, tipoSolicitacao: isCancel ? 'cancelamento' : 'reagendamento' });\n}\n\nif (estado === 'secretaria') {\n  if (!msgRaw) return out('invalido');\n  return out('secretaria_ok', { assunto: msgRaw });\n}\n\n// fallback\nreturn out('menu');"
+      }
+    },
+    {
+      "id": "n19-f59uo7",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -80,
+        -2740
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "menu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n20-46tojs"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "menu"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "agendar_proc",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n21-iawc4d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "agendar_proc"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "agendar_dia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n22-a0eosd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "agendar_dia"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "agendar_periodo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n23-etfwa4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "agendar_periodo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "agendar_confirma",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n24-fw4t6f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "agendar_confirma"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "agendar_ok",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n25-i6n4ff"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "agendar_ok"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "procedimentos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n26-m62ig3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "procedimentos"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "proc_odonto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n27-2ey7ia"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "proc_odonto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "proc_estetica",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n28-yme9dz"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "proc_estetica"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "valores",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n29-2eoxwv"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "valores"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "localizacao",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n30-cftojp"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "localizacao"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "urgencia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n31-gllls1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "urgencia"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "reagendar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n32-ktvtgz"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reagendar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "reagendar_ok",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n33-ze9x2b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reagendar_ok"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "secretaria",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n34-w0c6ij"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "secretaria"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "secretaria_ok",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n35-r3qc82"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "secretaria_ok"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rota }}",
+                    "rightValue": "invalido",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "n36-28hrw7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "invalido"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "n37-q7gmry",
+      "name": "Salva menu",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -4400
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "menu",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n38-5wn35c",
+      "name": "Envia menu",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -4400
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Olá! 👋 Bem-vindo(a) à *São João Odontologia*!\n\nEscolha uma opção digitando o número:\n\n1️⃣ Agendar consulta\n2️⃣ Reagendar ou cancelar\n3️⃣ Procedimentos e tratamentos\n4️⃣ Valores e formas de pagamento\n5️⃣ Endereço e horário de funcionamento\n6️⃣ Urgência / emergência\n7️⃣ Falar com a secretária\n\n_Digite o número da opção desejada_ 😊",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n39-jfe9y5",
+      "name": "Log enviada menu",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -4400
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Olá! 👋 Bem-vindo(a) à *São João Odontologia*!\\n\\nEscolha uma opção digitando o número:\\n\\n1️⃣ Agendar consulta\\n2️⃣ Reagendar ou cancelar\\n3️⃣ Procedimentos e tratamentos\\n4️⃣ Valores e formas de pagamento\\n5️⃣ Endereço e horário de funcionamento\\n6️⃣ Urgência / emergência\\n7️⃣ Falar com a secretária\\n\\n_Digite o número da opção desejada_ 😊\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n40-h5rwsf",
+      "name": "Salva agendar_proc",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -4140
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "agendar_proc",
+            "contexto": "={{ JSON.stringify($json.contexto || {}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n41-r5ule0",
+      "name": "Envia agendar_proc",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -4140
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Ótimo! Vamos agendar sua consulta 😊🦷\n\nQual *procedimento* você gostaria de agendar?\n_(ex: avaliação gratuita, limpeza, ortodontia, estética...)_\n\n✳️ *Voltar ao menu* -> digite *menu*",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n42-ypkult",
+      "name": "Log enviada agendar_proc",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -4140
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Ótimo! Vamos agendar sua consulta 😊🦷\\n\\nQual *procedimento* você gostaria de agendar?\\n_(ex: avaliação gratuita, limpeza, ortodontia, estética...)_\\n\\n✳️ *Voltar ao menu* -> digite *menu*\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n43-4djsiy",
+      "name": "Salva agendar_dia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -3880
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "agendar_dia",
+            "contexto": "={{ JSON.stringify($json.contexto || {}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n44-a15fua",
+      "name": "Envia agendar_dia",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -3880
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Perfeito! 📅 Qual o *melhor dia* para você?\n_(ex: segunda-feira, 20/06, próxima semana...)_\n\n✳️ *Voltar ao menu* -> digite *menu*",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n45-m1upy9",
+      "name": "Log enviada agendar_dia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -3880
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Perfeito! 📅 Qual o *melhor dia* para você?\\n_(ex: segunda-feira, 20/06, próxima semana...)_\\n\\n✳️ *Voltar ao menu* -> digite *menu*\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n46-nb60j6",
+      "name": "Salva agendar_periodo",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -3620
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "agendar_periodo",
+            "contexto": "={{ JSON.stringify($json.contexto || {}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n47-iju1ql",
+      "name": "Envia agendar_periodo",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -3620
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "⏰ Você prefere *manhã* ou *tarde*?\n\n✳️ *Voltar ao menu* -> digite *menu*",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n48-jdtect",
+      "name": "Log enviada agendar_periodo",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -3620
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"⏰ Você prefere *manhã* ou *tarde*?\\n\\n✳️ *Voltar ao menu* -> digite *menu*\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n49-0nu5nl",
+      "name": "Salva agendar_confirma",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -3360
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "agendar_confirma",
+            "contexto": "={{ JSON.stringify($json.contexto || {}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n50-lobx1t",
+      "name": "Envia agendar_confirma",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -3360
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "={{ '✅ *Confirmando seu agendamento:*\\n\\n📋 *Procedimento:* ' + ($json.contexto.procedimento || '') + '\\n📅 *Dia:* ' + ($json.contexto.dia || '') + '\\n⏰ *Período:* ' + ($json.contexto.periodo || '') + '\\n\\nEstá correto?\\n\\n1️⃣ Sim, confirmar!\\n2️⃣ Não, quero alterar' }}",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n51-tlpr8u",
+      "name": "Log enviada agendar_confirma",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -3360
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ '✅ Confirmando seu agendamento: Procedimento: ' + ($json.contexto.procedimento || '') + ' | Dia: ' + ($json.contexto.dia || '') + ' | Período: ' + ($json.contexto.periodo || '') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n52-knsmzw",
+      "name": "Salva agendar_ok",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -3100
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "menu",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n53-q8yigv",
+      "name": "Insere solicitacao agendamento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        440,
+        -3100
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "solicitacoes",
+          "mode": "list",
+          "cachedResultName": "solicitacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "nome": "={{ $('Coleta').item.json.nome }}",
+            "tipo": "agendamento",
+            "detalhes": "={{ 'Procedimento: ' + ($json.contexto.procedimento || '') + ' | Dia: ' + ($json.contexto.dia || '') + ' | Período: ' + ($json.contexto.periodo || '') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhes",
+              "displayName": "detalhes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n54-cr1oow",
+      "name": "Envia agendar_ok",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -3100
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Perfeito! Suas preferências foram anotadas e nossa equipe entrará em contato para confirmar o melhor horário disponível 😊🦷\n\nEnquanto isso, qualquer dúvida estamos por aqui! Digite *menu* para voltar ao início.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n55-d37c4b",
+      "name": "Log enviada agendar_ok",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        -3100
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Perfeito! Suas preferências foram anotadas e nossa equipe entrará em contato para confirmar o melhor horário disponível 😊🦷\\n\\nEnquanto isso, qualquer dúvida estamos por aqui! Digite *menu* para voltar ao início.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n56-64w145",
+      "name": "Notifica agendamento",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -2960
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "5548999594348",
+        "messageText": "={{ '🦷 *NOVO AGENDAMENTO*\\n\\n👤 *Paciente:* ' + $('Coleta').item.json.nome + '\\n📱 WhatsApp: https://wa.me/' + $('Coleta').item.json.telefone.replace('@s.whatsapp.net','') + '\\n📋 *Procedimento:* ' + ($json.contexto.procedimento || '') + '\\n📅 *Dia:* ' + ($json.contexto.dia || '') + '\\n⏰ *Período:* ' + ($json.contexto.periodo || '') + '\\n\\n✅ Entre em contato para confirmar o horário!' }}",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n57-of2oje",
+      "name": "Salva procedimentos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -2840
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "procedimentos",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n58-r0t5fs",
+      "name": "Envia procedimentos",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -2840
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "*🦷✨ Procedimentos e Tratamentos*\n\nEscolha a categoria:\n\n1️⃣ Odontologia\n2️⃣ Estética e Harmonização Facial\n\n0️⃣ Voltar ao menu",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n59-wv8qhd",
+      "name": "Log enviada procedimentos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -2840
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"*🦷✨ Procedimentos e Tratamentos*\\n\\nEscolha a categoria:\\n\\n1️⃣ Odontologia\\n2️⃣ Estética e Harmonização Facial\\n\\n0️⃣ Voltar ao menu\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n60-mpnfhm",
+      "name": "Salva proc_odonto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -2580
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "proc_odonto",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n61-ppwim9",
+      "name": "Envia proc_odonto",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -2580
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "*🦷 Odontologia*\n\n- *Limpeza Dental (Profilaxia)* - remove placa, tártaro e manchas (~45min). Sem flúor, com enxaguante natural à base de ervas.\n- *Restaurações em Resina Composta* - reconstrói dentes danificados com resultado natural.\n- *Facetas em Resina Composta* - corrige cor, forma e alinhamento, podendo ser feitas em uma única consulta.\n- *Implante Dental Unitário* - substitui a raiz do dente com titânio.\n- *Prótese Protocolo* - prótese fixa sobre implantes para arcada completa.\n- *Aparelhos Ortodônticos* - metálicos e estéticos para corrigir mordida e alinhar dentes.\n- *Alinhadores Invisíveis* - removíveis, transparentes e confortáveis.\n- *Tratamento Endodôntico (Canal)* - com a Dra. Talita, 20 anos de experiência.\n- *Tratamento para Bruxismo* - placas oclusais e abordagem integrativa personalizada.\n- *Remoção de Sisos* - indicada para dor, inflamação ou antes de ortodontia.\n- *Periodontia* - tratamento de gengivas e tecidos de suporte.\n- *Gengivoplastia* - remodelamento gengival para harmonizar o sorriso.\n- *Clareamento Dental Caseiro* - moldeiras personalizadas, acessível e seguro.\n- *Clareamento Dental a Laser* - gel ativado por laser, de 1 a 7 sessões.\n\nDigite *0* para voltar ao menu.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n62-one6vf",
+      "name": "Log enviada proc_odonto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -2580
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"*🦷 Odontologia*\\n\\n- *Limpeza Dental (Profilaxia)* - remove placa, tártaro e manchas (~45min). Sem flúor, com enxaguante natural à base de ervas.\\n- *Restaurações em Resina Composta* - reconstrói dentes danificados com resultado natural.\\n- *Facetas em Resina Composta* - corrige cor, forma e alinhamento, podendo ser feitas em uma única consulta.\\n- *Implante Dental Unitário* - substitui a raiz do dente com titânio.\\n- *Prótese Protocolo* - prótese fixa sobre implantes para arcada completa.\\n- *Aparelhos Ortodônticos* - metálicos e estéticos para corrigir mordida e alinhar dentes.\\n- *Alinhadores Invisíveis* - removíveis, transparentes e confortáveis.\\n- *Tratamento Endodôntico (Canal)* - com a Dra. Talita, 20 anos de experiência.\\n- *Tratamento para Bruxismo* - placas oclusais e abordagem integrativa personalizada.\\n- *Remoção de Sisos* - indicada para dor, inflamação ou antes de ortodontia.\\n- *Periodontia* - tratamento de gengivas e tecidos de suporte.\\n- *Gengivoplastia* - remodelamento gengival para harmonizar o sorriso.\\n- *Clareamento Dental Caseiro* - moldeiras personalizadas, acessível e seguro.\\n- *Clareamento Dental a Laser* - gel ativado por laser, de 1 a 7 sessões.\\n\\nDigite *0* para voltar ao menu.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n63-atgjr1",
+      "name": "Salva proc_estetica",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -2320
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "proc_estetica",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n64-aoj60h",
+      "name": "Envia proc_estetica",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -2320
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "*💆 Estética e Harmonização Facial*\n\n- *Harmonização Facial* - equilibra proporções e valoriza pontos da face.\n- *Preenchimento de Queixo* - ácido hialurônico, resultado imediato, dura 9 a 18 meses.\n- *Preenchimento Labial* - volume e contorno dos lábios, resultado imediato.\n- *Botox* - relaxa músculos faciais e suaviza rugas e linhas de expressão.\n- *Bioestimulador de Colágeno* - pele mais firme e jovem, efeito até 2 anos ou mais.\n- *Fios de PDO* - estimulam colágeno com efeito lifting não cirúrgico.\n- *Peeling Químico* - renova a pele, indicado para manchas, rugas e cicatrizes.\n- *Microagulhamento Facial* - melhora firmeza, textura, manchas e poros.\n\nDigite *0* para voltar ao menu.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n65-yn4u04",
+      "name": "Log enviada proc_estetica",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -2320
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"*💆 Estética e Harmonização Facial*\\n\\n- *Harmonização Facial* - equilibra proporções e valoriza pontos da face.\\n- *Preenchimento de Queixo* - ácido hialurônico, resultado imediato, dura 9 a 18 meses.\\n- *Preenchimento Labial* - volume e contorno dos lábios, resultado imediato.\\n- *Botox* - relaxa músculos faciais e suaviza rugas e linhas de expressão.\\n- *Bioestimulador de Colágeno* - pele mais firme e jovem, efeito até 2 anos ou mais.\\n- *Fios de PDO* - estimulam colágeno com efeito lifting não cirúrgico.\\n- *Peeling Químico* - renova a pele, indicado para manchas, rugas e cicatrizes.\\n- *Microagulhamento Facial* - melhora firmeza, textura, manchas e poros.\\n\\nDigite *0* para voltar ao menu.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n66-pce6go",
+      "name": "Salva valores",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -2060
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "valores",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n67-xvq9up",
+      "name": "Envia valores",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -2060
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "*💰 Valores e Formas de Pagamento*\n\nA consulta de avaliação é *totalmente gratuita* 🎉 — você conhece a clínica, conversa com os profissionais e recebe um diagnóstico personalizado sem custo.\n\nPossuímos *aparelho de Raio-X* próprio: *R$ 50,00* (quando necessário).\n\n*Descontos disponíveis:*\n- Parceiros do *Convênio Vida Cotidiana* → 10% de desconto em qualquer procedimento\n- *Limpeza, restauração e canal* pagos à vista → 15% de desconto\n\nPara os demais procedimentos, o valor é definido após a avaliação presencial gratuita 😊\n\n1️⃣ Quero agendar a avaliação gratuita\n0️⃣ Voltar ao menu",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n68-f0glud",
+      "name": "Log enviada valores",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -2060
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"*💰 Valores e Formas de Pagamento*\\n\\nA consulta de avaliação é *totalmente gratuita* 🎉 — você conhece a clínica, conversa com os profissionais e recebe um diagnóstico personalizado sem custo.\\n\\nPossuímos *aparelho de Raio-X* próprio: *R$ 50,00* (quando necessário).\\n\\n*Descontos disponíveis:*\\n- Parceiros do *Convênio Vida Cotidiana* → 10% de desconto em qualquer procedimento\\n- *Limpeza, restauração e canal* pagos à vista → 15% de desconto\\n\\nPara os demais procedimentos, o valor é definido após a avaliação presencial gratuita 😊\\n\\n1️⃣ Quero agendar a avaliação gratuita\\n0️⃣ Voltar ao menu\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n69-dg75bk",
+      "name": "Salva localizacao",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -1800
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "localizacao",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n70-4vwqcl",
+      "name": "Envia localizacao",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -1800
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "*📍 Endereço e Horário de Funcionamento*\n\n*Endereço:* Rua São João, 1366 – Bairro São João, Margem Esquerda, Tubarão – SC\n\n*Como chegar:*\n🗺️ Google Maps: https://bit.ly/maps_saojoaoodontologia\n🧭 Waze: https://bit.ly/waze_saojoaoodontologia\n🚗 Uber: pesquise por _\"São João Odontologia\"_\n\n*⏰ Horário de funcionamento:*\n- Segunda a Quinta: 09h00 às 18h30\n- Sexta-feira: 09h00 às 17h00\n- Sábados e Domingos: Fechado\n\nDigite *0* para voltar ao menu.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n71-el33jy",
+      "name": "Log enviada localizacao",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -1800
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"*📍 Endereço e Horário de Funcionamento*\\n\\n*Endereço:* Rua São João, 1366 – Bairro São João, Margem Esquerda, Tubarão – SC\\n\\n*Como chegar:*\\n🗺️ Google Maps: https://bit.ly/maps_saojoaoodontologia\\n🧭 Waze: https://bit.ly/waze_saojoaoodontologia\\n🚗 Uber: pesquise por _\\\"São João Odontologia\\\"_\\n\\n*⏰ Horário de funcionamento:*\\n- Segunda a Quinta: 09h00 às 18h30\\n- Sexta-feira: 09h00 às 17h00\\n- Sábados e Domingos: Fechado\\n\\nDigite *0* para voltar ao menu.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n72-8ukzs1",
+      "name": "Salva urgencia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -1540
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "urgencia",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n73-cq72ym",
+      "name": "Insere solicitacao urgencia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        440,
+        -1540
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "solicitacoes",
+          "mode": "list",
+          "cachedResultName": "solicitacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "nome": "={{ $('Coleta').item.json.nome }}",
+            "tipo": "urgencia",
+            "detalhes": "={{ 'Paciente relatou situação de urgência/emergência via chatbot. Mensagem: ' + ($('Coleta').item.json.mensagem || '') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhes",
+              "displayName": "detalhes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n74-vcl48d",
+      "name": "Envia urgencia",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -1540
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "😟 Entendemos que isso pode ser desconfortável.\n\nPara *urgências e emergências*, ligue imediatamente para a clínica:\n\n📞 *(48) 3302-5012*\n\nNossa equipe verificará a disponibilidade de atendimento de urgência o quanto antes.\n\n_Se estiver fora do horário de funcionamento, procure a UPA ou pronto-socorro mais próximo._\n\nJá avisamos nossa equipe sobre o seu contato 🙏\n\nDigite *0* para voltar ao menu.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n75-nzflqp",
+      "name": "Log enviada urgencia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        -1540
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"😟 Entendemos que isso pode ser desconfortável.\\n\\nPara *urgências e emergências*, ligue imediatamente para a clínica:\\n\\n📞 *(48) 3302-5012*\\n\\nNossa equipe verificará a disponibilidade de atendimento de urgência o quanto antes.\\n\\n_Se estiver fora do horário de funcionamento, procure a UPA ou pronto-socorro mais próximo._\\n\\nJá avisamos nossa equipe sobre o seu contato 🙏\\n\\nDigite *0* para voltar ao menu.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n76-nf14nb",
+      "name": "Notifica urgencia",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -1400
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "5548999594348",
+        "messageText": "={{ '🚨 *URGÊNCIA / EMERGÊNCIA*\\n\\n👤 *Paciente:* ' + $('Coleta').item.json.nome + '\\n📱 WhatsApp: https://wa.me/' + $('Coleta').item.json.telefone.replace('@s.whatsapp.net','') + '\\n\\n⚠️ Entre em contato imediatamente!' }}",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n77-orbrtp",
+      "name": "Salva reagendar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -1280
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "reagendar",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n78-2qe78a",
+      "name": "Envia reagendar",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -1280
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Sem problemas! 😊 Me conta rapidinho o que você gostaria de mudar\n_(consulta, dia, procedimento, ou se prefere cancelar)_...\n\n✳️ *Voltar ao menu* -> digite *menu*",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n79-ztpav9",
+      "name": "Log enviada reagendar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -1280
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Sem problemas! 😊 Me conta rapidinho o que você gostaria de mudar\\n_(consulta, dia, procedimento, ou se prefere cancelar)_...\\n\\n✳️ *Voltar ao menu* -> digite *menu*\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n80-63p0hm",
+      "name": "Salva reagendar_ok",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -1020
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "menu",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n81-5p8bzn",
+      "name": "Insere solicitacao reagendar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        440,
+        -1020
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "solicitacoes",
+          "mode": "list",
+          "cachedResultName": "solicitacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "nome": "={{ $('Coleta').item.json.nome }}",
+            "tipo": "={{ $json.contexto.tipoSolicitacao || 'reagendamento' }}",
+            "detalhes": "={{ $json.contexto.pedido || '' }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhes",
+              "displayName": "detalhes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n82-m54nid",
+      "name": "Envia reagendar_ok",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -1020
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Entendido! 😊 Nossa equipe entrará em contato pelo WhatsApp para combinar o que for necessário.\n\nDigite *menu* para voltar ao início.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n83-era0cu",
+      "name": "Log enviada reagendar_ok",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        -1020
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Entendido! 😊 Nossa equipe entrará em contato pelo WhatsApp para combinar o que for necessário.\\n\\nDigite *menu* para voltar ao início.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n84-edol0z",
+      "name": "Notifica reagendamento",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -880
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "5548999594348",
+        "messageText": "={{ '📅 *REAGENDAMENTO / CANCELAMENTO*\\n\\n👤 *Paciente:* ' + $('Coleta').item.json.nome + '\\n📱 WhatsApp: https://wa.me/' + $('Coleta').item.json.telefone.replace('@s.whatsapp.net','') + '\\n🔄 *Tipo:* ' + ($json.contexto.tipoSolicitacao || 'reagendamento') + '\\n📝 *Detalhes:* ' + ($json.contexto.pedido || '') + '\\n\\n⚠️ Entre em contato com o paciente!' }}",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n85-10162s",
+      "name": "Salva secretaria",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -760
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "secretaria",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n86-yeirp5",
+      "name": "Envia secretaria",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -760
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Claro! 😊 Sobre o que você gostaria de falar com a secretária?\n\n✳️ *Voltar ao menu* -> digite *menu*",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n87-y15485",
+      "name": "Log enviada secretaria",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -760
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Claro! 😊 Sobre o que você gostaria de falar com a secretária?\\n\\n✳️ *Voltar ao menu* -> digite *menu*\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n88-64p6fr",
+      "name": "Salva secretaria_ok",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -500
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "menu",
+            "contexto": "={{ JSON.stringify({}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n89-vv947v",
+      "name": "Insere solicitacao secretaria",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        440,
+        -500
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "solicitacoes",
+          "mode": "list",
+          "cachedResultName": "solicitacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "nome": "={{ $('Coleta').item.json.nome }}",
+            "tipo": "secretaria",
+            "detalhes": "={{ $json.contexto.assunto || '' }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhes",
+              "displayName": "detalhes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n90-0mugye",
+      "name": "Envia secretaria_ok",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -500
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Certo! Já avisei nossa equipe e em breve alguém vai te chamar aqui no WhatsApp 😊\n\nDigite *menu* para voltar ao início.",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n91-j5augg",
+      "name": "Log enviada secretaria_ok",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        -500
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Certo! Já avisei nossa equipe e em breve alguém vai te chamar aqui no WhatsApp 😊\\n\\nDigite *menu* para voltar ao início.\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n92-u2j9n4",
+      "name": "Notifica secretaria",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -360
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "5548999594348",
+        "messageText": "={{ '💬 *CONTATO SOLICITADO*\\n\\n👤 *Paciente:* ' + $('Coleta').item.json.nome + '\\n📱 WhatsApp: https://wa.me/' + $('Coleta').item.json.telefone.replace('@s.whatsapp.net','') + '\\n📝 *Assunto:* ' + ($json.contexto.assunto || '') + '\\n\\n📞 O paciente quer falar com a secretária!' }}",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n93-ycldwa",
+      "name": "Salva invalido",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        180,
+        -240
+      ],
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "conversas_estado",
+          "mode": "list",
+          "cachedResultName": "conversas_estado"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "estado": "={{ $json.estado === 'menu' || !$json.estado ? 'menu' : $json.estado }}",
+            "contexto": "={{ JSON.stringify($json.contexto || {}) }}",
+            "atualizado_em": "={{ $now }}"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "contexto",
+              "displayName": "contexto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "atualizado_em",
+              "displayName": "atualizado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n94-2gqw5t",
+      "name": "Envia invalido",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -240
+      ],
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "WhatsAppTesteBot",
+        "remoteJid": "={{ $('Coleta').item.json.telefone }}",
+        "messageText": "Não entendi 😅 Digite o número de uma das opções do menu.\n\n1️⃣ Agendar consulta\n2️⃣ Reagendar ou cancelar\n3️⃣ Procedimentos e tratamentos\n4️⃣ Valores e formas de pagamento\n5️⃣ Endereço e horário de funcionamento\n6️⃣ Urgência / emergência\n7️⃣ Falar com a secretária",
+        "options_message": {}
+      },
+      "credentials": {
+        "evolutionApi": {
+          "id": "qoEWUNnosZjk2ehK",
+          "name": "WhatsAppTesteBot"
+        }
+      }
+    },
+    {
+      "id": "n95-wxlcfd",
+      "name": "Log enviada invalido",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        700,
+        -240
+      ],
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "mensagens",
+          "mode": "list",
+          "cachedResultName": "mensagens"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Coleta').item.json.telefone }}",
+            "direcao": "enviada",
+            "conteudo": "={{ \"Não entendi 😅 Digite o número de uma das opções do menu.\\n\\n1️⃣ Agendar consulta\\n2️⃣ Reagendar ou cancelar\\n3️⃣ Procedimentos e tratamentos\\n4️⃣ Valores e formas de pagamento\\n5️⃣ Endereço e horário de funcionamento\\n6️⃣ Urgência / emergência\\n7️⃣ Falar com a secretária\" }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "conteudo",
+              "displayName": "conteudo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "postgres": {
+          "id": "02KjbxDnwalkH1ES",
+          "name": "Supabase_SaoJoao_Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "n96-lc449b",
+      "name": "Bot Menu - Cloudy - Sao Joao Odontologia (Nota)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -3200,
+        -3020
+      ],
+      "parameters": {
+        "content": "## Bot Menu - Cloudy - Sao Joao Odontologia\n\nFluxo 100% automatico com menu numerico (1-7).\n\nComandos da secretaria (mensagem enviada pelo proprio numero - fromMe):\n- 'pausar' -> pausa o bot para aquele telefone\n- 'retomar' -> retoma o bot para aquele telefone\n\nPaciente pode digitar 'menu' a qualquer momento para voltar ao inicio.\n\nCREDENCIAIS: configurar Supabase_SaoJoao_Postgres (senha do banco) e WhatsAppTesteBot (server-url + apikey) antes de ativar.",
+        "height": 200,
+        "width": 700,
+        "color": 3
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Coleta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Coleta": {
+      "main": [
+        [
+          {
+            "node": "Normaliza",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza": {
+      "main": [
+        [
+          {
+            "node": "E comando?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E comando?": {
+      "main": [
+        [
+          {
+            "node": "E pausar?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log recebida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E pausar?": {
+      "main": [
+        [
+          {
+            "node": "Pausa bot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retoma bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log recebida": {
+      "main": [
+        [
+          {
+            "node": "Verifica pausa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verifica pausa": {
+      "main": [
+        [
+          {
+            "node": "Restaura dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaura dados": {
+      "main": [
+        [
+          {
+            "node": "Bot pausado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bot pausado?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Upsert paciente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert paciente": {
+      "main": [
+        [
+          {
+            "node": "Busca estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca estado": {
+      "main": [
+        [
+          {
+            "node": "Monta contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta contexto": {
+      "main": [
+        [
+          {
+            "node": "Roteador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Salva menu",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva agendar_proc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva agendar_dia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva agendar_periodo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva agendar_confirma",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva agendar_ok",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva procedimentos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva proc_odonto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva proc_estetica",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva valores",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva localizacao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva urgencia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva reagendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva reagendar_ok",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva secretaria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva secretaria_ok",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salva invalido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva menu": {
+      "main": [
+        [
+          {
+            "node": "Envia menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia menu": {
+      "main": [
+        [
+          {
+            "node": "Log enviada menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva agendar_proc": {
+      "main": [
+        [
+          {
+            "node": "Envia agendar_proc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia agendar_proc": {
+      "main": [
+        [
+          {
+            "node": "Log enviada agendar_proc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva agendar_dia": {
+      "main": [
+        [
+          {
+            "node": "Envia agendar_dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia agendar_dia": {
+      "main": [
+        [
+          {
+            "node": "Log enviada agendar_dia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva agendar_periodo": {
+      "main": [
+        [
+          {
+            "node": "Envia agendar_periodo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia agendar_periodo": {
+      "main": [
+        [
+          {
+            "node": "Log enviada agendar_periodo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva agendar_confirma": {
+      "main": [
+        [
+          {
+            "node": "Envia agendar_confirma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia agendar_confirma": {
+      "main": [
+        [
+          {
+            "node": "Log enviada agendar_confirma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva agendar_ok": {
+      "main": [
+        [
+          {
+            "node": "Insere solicitacao agendamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insere solicitacao agendamento": {
+      "main": [
+        [
+          {
+            "node": "Envia agendar_ok",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notifica agendamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia agendar_ok": {
+      "main": [
+        [
+          {
+            "node": "Log enviada agendar_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva procedimentos": {
+      "main": [
+        [
+          {
+            "node": "Envia procedimentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia procedimentos": {
+      "main": [
+        [
+          {
+            "node": "Log enviada procedimentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva proc_odonto": {
+      "main": [
+        [
+          {
+            "node": "Envia proc_odonto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia proc_odonto": {
+      "main": [
+        [
+          {
+            "node": "Log enviada proc_odonto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva proc_estetica": {
+      "main": [
+        [
+          {
+            "node": "Envia proc_estetica",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia proc_estetica": {
+      "main": [
+        [
+          {
+            "node": "Log enviada proc_estetica",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva valores": {
+      "main": [
+        [
+          {
+            "node": "Envia valores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia valores": {
+      "main": [
+        [
+          {
+            "node": "Log enviada valores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva localizacao": {
+      "main": [
+        [
+          {
+            "node": "Envia localizacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia localizacao": {
+      "main": [
+        [
+          {
+            "node": "Log enviada localizacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva urgencia": {
+      "main": [
+        [
+          {
+            "node": "Insere solicitacao urgencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insere solicitacao urgencia": {
+      "main": [
+        [
+          {
+            "node": "Envia urgencia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notifica urgencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia urgencia": {
+      "main": [
+        [
+          {
+            "node": "Log enviada urgencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva reagendar": {
+      "main": [
+        [
+          {
+            "node": "Envia reagendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia reagendar": {
+      "main": [
+        [
+          {
+            "node": "Log enviada reagendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva reagendar_ok": {
+      "main": [
+        [
+          {
+            "node": "Insere solicitacao reagendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insere solicitacao reagendar": {
+      "main": [
+        [
+          {
+            "node": "Envia reagendar_ok",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notifica reagendamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia reagendar_ok": {
+      "main": [
+        [
+          {
+            "node": "Log enviada reagendar_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva secretaria": {
+      "main": [
+        [
+          {
+            "node": "Envia secretaria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia secretaria": {
+      "main": [
+        [
+          {
+            "node": "Log enviada secretaria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva secretaria_ok": {
+      "main": [
+        [
+          {
+            "node": "Insere solicitacao secretaria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insere solicitacao secretaria": {
+      "main": [
+        [
+          {
+            "node": "Envia secretaria_ok",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notifica secretaria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia secretaria_ok": {
+      "main": [
+        [
+          {
+            "node": "Log enviada secretaria_ok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva invalido": {
+      "main": [
+        [
+          {
+            "node": "Envia invalido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia invalido": {
+      "main": [
+        [
+          {
+            "node": "Log enviada invalido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

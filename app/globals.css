@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette — São João Odontologia (verde-sálvia do logo) */
+  --color-brand-50: #f0f3f1;
+  --color-brand-100: #dde6e0;
+  --color-brand-200: #c1d0c7;
+  --color-brand-300: #9fb4a7;
+  --color-brand-400: #788f81;
+  --color-brand-500: #5c6e64;
+  --color-brand-600: #4b5a51;
+  --color-brand-700: #3d4a43;
+  --color-brand-800: #313b35;
+  --color-brand-900: #28302b;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
