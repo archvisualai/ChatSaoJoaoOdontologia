@@ -7,6 +7,34 @@ import { sendWhatsAppText, sendWhatsAppMedia } from "@/lib/evolution";
 
 type ActionResult = { error: string | null };
 
+const GLOBAL_PAUSE = "__GLOBAL__";
+
+export async function setPausaGlobal(pausar: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sessão expirada. Faça login novamente." };
+
+  if (pausar) {
+    const { error } = await supabase.from("bot_pausado").upsert({
+      telefone: GLOBAL_PAUSE,
+      pausado_por: "secretaria",
+      pausado_em: new Date().toISOString(),
+    });
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("bot_pausado")
+      .delete()
+      .eq("telefone", GLOBAL_PAUSE);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/", "layout");
+  return { error: null };
+}
+
 export async function registrarSecretaria(
   email: string,
   password: string,

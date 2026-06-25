@@ -31,7 +31,10 @@ export default async function OverviewPage() {
       .select("*", { count: "exact", head: true })
       .eq("direcao", "recebida")
       .gte("criado_em", startOfToday.toISOString()),
-    supabase.from("bot_pausado").select("*", { count: "exact", head: true }),
+    supabase
+      .from("bot_pausado")
+      .select("*", { count: "exact", head: true })
+      .neq("telefone", "__GLOBAL__"),
   ]);
 
   const erro =

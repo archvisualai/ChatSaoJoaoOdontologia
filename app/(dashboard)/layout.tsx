@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import NavLinks from "@/components/NavLinks";
 import LogoutButton from "@/components/LogoutButton";
 import AlertaSolicitacoes from "@/components/AlertaSolicitacoes";
+import GlobalPauseBanner from "@/components/GlobalPauseBanner";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -18,6 +19,12 @@ export default async function DashboardLayout({
   if (!user) {
     redirect("/login");
   }
+
+  const { data: pausaGlobal } = await supabase
+    .from("bot_pausado")
+    .select("telefone")
+    .eq("telefone", "__GLOBAL__")
+    .maybeSingle();
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -74,6 +81,7 @@ export default async function DashboardLayout({
 
       {/* Conteúdo */}
       <main className="md:pl-60">
+        <GlobalPauseBanner pausado={pausaGlobal !== null} />
         <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:py-8">
           {children}
         </div>
