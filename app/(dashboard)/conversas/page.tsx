@@ -25,7 +25,14 @@ export default async function ConversasPage() {
     supabase.from("bot_pausado").select("telefone"),
   ]);
 
-  const pausadosSet = new Set((pausados ?? []).map((p) => p.telefone));
+  const globalPaused = (pausados ?? []).some(
+    (p) => p.telefone === "__GLOBAL__"
+  );
+  const pausadosSet = new Set(
+    (pausados ?? [])
+      .map((p) => p.telefone)
+      .filter((t) => t !== "__GLOBAL__")
+  );
 
   return (
     <div className="space-y-6">
@@ -75,7 +82,11 @@ export default async function ConversasPage() {
                       {formatDate(p.ultima_interacao)}
                     </td>
                     <td className="px-4 py-3">
-                      {pausado ? (
+                      {globalPaused ? (
+                        <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                          Pausado (todos)
+                        </span>
+                      ) : pausado ? (
                         <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                           Pausado
                         </span>

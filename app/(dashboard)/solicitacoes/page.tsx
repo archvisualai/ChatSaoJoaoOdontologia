@@ -1,15 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import {
+  SOLICITACAO_TIPO_LABEL as TIPO_LABELS,
+} from "@/lib/types";
 import type { Solicitacao, SolicitacaoTipo } from "@/lib/types";
 import MarcarAtendidoButton from "@/components/MarcarAtendidoButton";
-
-const TIPO_LABELS: Record<SolicitacaoTipo, string> = {
-  agendamento: "Agendamento",
-  reagendamento: "Reagendamento",
-  cancelamento: "Cancelamento",
-  urgencia: "Urgência",
-  secretaria: "Secretaria",
-};
 
 const TIPOS = Object.keys(TIPO_LABELS) as SolicitacaoTipo[];
 

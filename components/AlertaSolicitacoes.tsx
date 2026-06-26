@@ -4,16 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { SOLICITACAO_TIPO_LABEL } from "@/lib/types";
+import type { SolicitacaoTipo } from "@/lib/types";
 
 type Toast = { id: number; tipo: string; nome: string | null };
-
-const TIPO_LABEL: Record<string, string> = {
-  agendamento: "Agendamento",
-  reagendamento: "Reagendamento",
-  cancelamento: "Cancelamento",
-  urgencia: "Urgência",
-  secretaria: "Secretária",
-};
 
 let audioCtx: AudioContext | null = null;
 
@@ -56,6 +50,8 @@ export default function AlertaSolicitacoes() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const naoVistasRef = useRef(0);
   const tituloOriginalRef = useRef<string>("");
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     tituloOriginalRef.current = document.title;
@@ -65,15 +61,21 @@ export default function AlertaSolicitacoes() {
     window.addEventListener("pointerdown", desbloquear, { once: true });
     window.addEventListener("keydown", desbloquear, { once: true });
 
-    const aoFocar = () => {
+    const resetTitulo = () => {
       naoVistasRef.current = 0;
       document.title = tituloOriginalRef.current;
     };
-    window.addEventListener("focus", aoFocar);
+    const aoVisibilidade = () => {
+      if (document.visibilityState === "visible") resetTitulo();
+    };
+    window.addEventListener("focus", resetTitulo);
+    document.addEventListener("visibilitychange", aoVisibilidade);
 
     const supabase = createClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let authSub: { subscription: { unsubscribe: () => void } } | null = null;
     let cancelled = false;
+    const timers = timersRef.current;
 
     (async () => {
       const {
@@ -81,6 +83,11 @@ export default function AlertaSolicitacoes() {
       } = await supabase.auth.getSession();
       if (cancelled) return;
       if (session) await supabase.realtime.setAuth(session.access_token);
+
+      // mantém o token do Realtime válido em abas abertas por muito tempo
+      authSub = supabase.auth.onAuthStateChange((_event, s) => {
+        if (s) supabase.realtime.setAuth(s.access_token);
+      }).data;
 
       channel = supabase
         .channel("alerta-solicitacoes")
@@ -98,13 +105,23 @@ export default function AlertaSolicitacoes() {
               { id: nova.id, tipo: nova.tipo, nome: nova.nome },
               ...prev,
             ]);
-            naoVistasRef.current += 1;
-            document.title = `(${naoVistasRef.current}) Nova solicitação — São João`;
-            router.refresh();
+
+            // só marca no título quando a aba não está visível
+            if (document.hidden) {
+              naoVistasRef.current += 1;
+              document.title = `(${naoVistasRef.current}) Nova solicitação — São João`;
+            }
+
+            // atualiza os contadores do painel, agrupando rajadas
+            if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+            refreshTimerRef.current = setTimeout(() => router.refresh(), 800);
+
             // remove o toast após 12s
-            setTimeout(() => {
+            const tid = setTimeout(() => {
               setToasts((prev) => prev.filter((t) => t.id !== nova.id));
+              timers.delete(tid);
             }, 12000);
+            timers.add(tid);
           }
         )
         .subscribe();
@@ -113,7 +130,14 @@ export default function AlertaSolicitacoes() {
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
-      window.removeEventListener("focus", aoFocar);
+      if (authSub) authSub.subscription.unsubscribe();
+      window.removeEventListener("pointerdown", desbloquear);
+      window.removeEventListener("keydown", desbloquear);
+      window.removeEventListener("focus", resetTitulo);
+      document.removeEventListener("visibilitychange", aoVisibilidade);
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       document.title = tituloOriginalRef.current;
     };
   }, [router]);
@@ -152,7 +176,7 @@ export default function AlertaSolicitacoes() {
                   Nova solicitação{urgente ? " · URGÊNCIA" : ""}
                 </p>
                 <p className="truncate text-xs text-slate-500">
-                  {TIPO_LABEL[t.tipo] ?? t.tipo}
+                  {SOLICITACAO_TIPO_LABEL[t.tipo as SolicitacaoTipo] ?? t.tipo}
                   {t.nome ? ` — ${t.nome}` : ""}
                 </p>
                 <Link

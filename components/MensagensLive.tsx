@@ -28,6 +28,7 @@ export default function MensagensLive({
   useEffect(() => {
     const supabase = createClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let authSub: { subscription: { unsubscribe: () => void } } | null = null;
     let cancelled = false;
 
     (async () => {
@@ -40,6 +41,11 @@ export default function MensagensLive({
       if (session) {
         await supabase.realtime.setAuth(session.access_token);
       }
+
+      // mantém o token do Realtime válido em abas abertas por muito tempo
+      authSub = supabase.auth.onAuthStateChange((_event, s) => {
+        if (s) supabase.realtime.setAuth(s.access_token);
+      }).data;
 
       channel = supabase
         .channel(`mensagens:${telefone}`)
@@ -64,6 +70,7 @@ export default function MensagensLive({
     return () => {
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
+      if (authSub) authSub.subscription.unsubscribe();
     };
   }, [telefone]);
 

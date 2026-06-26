@@ -27,6 +27,14 @@ export type SolicitacaoTipo =
 
 export type SolicitacaoStatus = "pendente" | "atendido";
 
+export const SOLICITACAO_TIPO_LABEL: Record<SolicitacaoTipo, string> = {
+  agendamento: "Agendamento",
+  reagendamento: "Reagendamento",
+  cancelamento: "Cancelamento",
+  urgencia: "Urgência",
+  secretaria: "Secretaria",
+};
+
 export type Solicitacao = {
   id: number;
   telefone: string;
