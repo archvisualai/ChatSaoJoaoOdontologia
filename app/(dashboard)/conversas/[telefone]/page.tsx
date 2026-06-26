@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Mensagem } from "@/lib/types";
+import { formatTelefone } from "@/lib/types";
 import Composer from "@/components/Composer";
 import MensagensLive from "@/components/MensagensLive";
 
@@ -51,7 +52,7 @@ export default async function ConversaPage({
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">
             {paciente?.nome || "Sem nome"}
           </h1>
-          <p className="text-sm text-slate-500">{telefone}</p>
+          <p className="text-sm text-slate-500">{formatTelefone(telefone)}</p>
         </div>
       </div>
 

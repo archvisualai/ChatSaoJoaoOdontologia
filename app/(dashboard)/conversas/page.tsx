@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Paciente } from "@/lib/types";
+import { formatTelefone } from "@/lib/types";
 import PausarBotToggle from "@/components/PausarBotToggle";
 
 function formatDate(value: string) {
@@ -75,8 +76,8 @@ export default async function ConversasPage() {
                         {p.nome || "Sem nome"}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {p.telefone}
+                    <td className="px-4 py-3 whitespace-nowrap text-slate-600">
+                      {formatTelefone(p.telefone)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-500">
                       {formatDate(p.ultima_interacao)}

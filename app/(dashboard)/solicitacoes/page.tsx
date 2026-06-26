@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   SOLICITACAO_TIPO_LABEL as TIPO_LABELS,
+  formatTelefone,
 } from "@/lib/types";
 import type { Solicitacao, SolicitacaoTipo } from "@/lib/types";
 import MarcarAtendidoButton from "@/components/MarcarAtendidoButton";
@@ -112,7 +113,9 @@ export default async function SolicitacoesPage({
                       {s.nome || "Sem nome"}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{s.telefone}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-slate-600">
+                    {formatTelefone(s.telefone)}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
                       {TIPO_LABELS[s.tipo] ?? s.tipo}

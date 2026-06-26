@@ -27,6 +27,16 @@ export type SolicitacaoTipo =
 
 export type SolicitacaoStatus = "pendente" | "atendido";
 
+export function formatTelefone(telefone: string): string {
+  const d = (telefone || "").replace(/\D/g, "");
+  if (d.startsWith("55") && d.length >= 12) {
+    const ddd = d.slice(2, 4);
+    const num = d.slice(4);
+    return `(${ddd}) ${num.slice(0, num.length - 4)}-${num.slice(-4)}`;
+  }
+  return telefone.replace("@s.whatsapp.net", "");
+}
+
 export const SOLICITACAO_TIPO_LABEL: Record<SolicitacaoTipo, string> = {
   agendamento: "Agendamento",
   reagendamento: "Reagendamento",
