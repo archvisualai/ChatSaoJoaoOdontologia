@@ -32,7 +32,7 @@ export default function PausarBotToggle({
       <button
         onClick={handleToggle}
         disabled={isPending}
-        className={`rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
           pausado
             ? "bg-brand-600 text-white hover:bg-brand-700"
             : "bg-slate-100 text-slate-700 hover:bg-slate-200"
