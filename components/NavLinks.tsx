@@ -2,21 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconHome, IconClipboard, IconChat } from "@/components/icons";
+import { IconHome, IconClipboard, IconChat, IconChart } from "@/components/icons";
 
-const links = [
+const baseLinks = [
   { href: "/", label: "Visão geral", Icon: IconHome },
   { href: "/solicitacoes", label: "Solicitações", Icon: IconClipboard },
   { href: "/conversas", label: "Conversas", Icon: IconChat },
 ];
 
+const estatisticasLink = {
+  href: "/estatisticas",
+  label: "Estatísticas",
+  Icon: IconChart,
+};
+
 export default function NavLinks({
   orientation = "vertical",
+  isMedica = false,
 }: {
   orientation?: "vertical" | "horizontal";
+  isMedica?: boolean;
 }) {
   const pathname = usePathname();
   const isHorizontal = orientation === "horizontal";
+  const links = isMedica ? [...baseLinks, estatisticasLink] : baseLinks;
 
   return (
     <nav

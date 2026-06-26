@@ -20,6 +20,8 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const isMedica = user.app_metadata?.role === "medica";
+
   const { data: pausaGlobal } = await supabase
     .from("bot_pausado")
     .select("telefone")
@@ -49,7 +51,7 @@ export default async function DashboardLayout({
           <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Painel
           </p>
-          <NavLinks />
+          <NavLinks isMedica={isMedica} />
         </div>
         <div className="border-t border-slate-100 p-3">
           <LogoutButton full />
@@ -75,7 +77,7 @@ export default async function DashboardLayout({
           <LogoutButton />
         </div>
         <div className="border-t border-slate-100 px-2 py-2">
-          <NavLinks orientation="horizontal" />
+          <NavLinks orientation="horizontal" isMedica={isMedica} />
         </div>
       </header>
 
