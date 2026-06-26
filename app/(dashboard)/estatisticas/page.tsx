@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { SOLICITACAO_TIPO_LABEL } from "@/lib/types";
+import { SOLICITACAO_TIPO_LABEL, inicioDiaBrasilia } from "@/lib/types";
 import type { SolicitacaoTipo } from "@/lib/types";
 
 const RANGES = [
@@ -64,9 +64,7 @@ export default async function EstatisticasPage({
     .order("criado_em", { ascending: true });
 
   if (range.days !== null) {
-    const start = new Date();
-    start.setDate(start.getDate() - range.days);
-    start.setHours(0, 0, 0, 0);
+    const start = inicioDiaBrasilia(range.days);
     query = query.gte("criado_em", start.toISOString());
   }
 

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { inicioDiaBrasilia } from "@/lib/types";
 import type { SolicitacaoTipo } from "@/lib/types";
 import { IconClipboard, IconUsers, IconChat, IconPause } from "@/components/icons";
 
@@ -15,8 +16,7 @@ const TIPO_META: Record<SolicitacaoTipo, { label: string; dot: string }> = {
 export default async function OverviewPage() {
   const supabase = await createClient();
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = inicioDiaBrasilia();
 
   const [
     { data: pendentes, error: errPendentes },
